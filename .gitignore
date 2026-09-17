@@ -1,0 +1,6 @@
+*.code
+*.test
+*.py
+__pycache__
+sign
+str*
