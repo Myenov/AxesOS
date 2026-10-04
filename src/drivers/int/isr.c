@@ -1,6 +1,8 @@
 #include "isr.h"
 #include "IDT.h"
 #include <stdint.h>
+#include "../video/video.h"
+#include "../str.h"
 
 void* isr_stub_table[] = {
     isr0, isr1, isr2, isr3, isr4, isr5, isr6, isr7,
