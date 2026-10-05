@@ -21,4 +21,16 @@ static inline uint64_t inline_rdtscp(void) {
     __asm__ volatile("rdtscp" : "=a"(low), "=d"(high) :: "%ecx");
     return ((uint64_t)high << 32) | low;
 }
+
+static inline uint64_t rdtsc_serialized(void) {
+    uint32_t low, high;
+    __asm__ __volatile__ (
+        "lfence\n\t"
+        "rdtsc\n\t"
+        : "=a"(low), "=d"(high)
+        :
+        : "memory"
+    );
+    return ((uint64_t)high << 32) | low;
+}
 #endif

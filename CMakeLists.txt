@@ -1,5 +1,4 @@
 cmake_minimum_required(VERSION 3.20)
-
 project(AxesOS C ASM_NASM)
 
 set(SOURCE_DIR    ${CMAKE_SOURCE_DIR}/src)
@@ -13,19 +12,20 @@ set(ALLOC_DIR     ${DRIVERS_DIR}/alloc)
 set(CLOCK_DIR     ${DRIVERS_DIR}/clock)
 
 set(BOOTLOADER_BIN ${CMAKE_BINARY_DIR}/bootloader.bin)
-set(TTS_OBJ       ${CMAKE_BINARY_DIR}/tts_init.o)
-set(ISR_OBJ       ${CMAKE_BINARY_DIR}/isr.o)
-set(IDT_OBJ       ${CMAKE_BINARY_DIR}/idt.o)
-set(ISR_C_OBJ     ${CMAKE_BINARY_DIR}/isr_c.o)
-set(PIC_OBJ       ${CMAKE_BINARY_DIR}/pic.o)
-set(TOCLICK_OBJ   ${CMAKE_BINARY_DIR}/toclick.o)
-set(VIDEO_OBJ     ${CMAKE_BINARY_DIR}/video.o)
-set(ALLOCATOR_OBJ ${CMAKE_BINARY_DIR}/allocator.o)
-set(ALLOC_OBJ     ${CMAKE_BINARY_DIR}/alloc.o)
-set(CLOCK_OBJ     ${CMAKE_BINARY_DIR}/clock.o)
-set(KERNEL_OBJ    ${CMAKE_BINARY_DIR}/kernel.o)
-set(KERNEL_BIN    ${CMAKE_BINARY_DIR}/kernel.bin)
-set(DISK_IMAGE    ${CMAKE_BINARY_DIR}/AxesOS.img)
+set(STAGE2_BIN     ${CMAKE_BINARY_DIR}/bootloader.stage2.bin)
+set(TTS_OBJ        ${CMAKE_BINARY_DIR}/tts_init.o)
+set(ISR_OBJ        ${CMAKE_BINARY_DIR}/isr.o)
+set(IDT_OBJ        ${CMAKE_BINARY_DIR}/idt.o)
+set(ISR_C_OBJ      ${CMAKE_BINARY_DIR}/isr_c.o)
+set(PIC_OBJ        ${CMAKE_BINARY_DIR}/pic.o)
+set(TOCLICK_OBJ    ${CMAKE_BINARY_DIR}/toclick.o)
+set(VIDEO_OBJ      ${CMAKE_BINARY_DIR}/video.o)
+set(ALLOCATOR_OBJ  ${CMAKE_BINARY_DIR}/allocator.o)
+set(ALLOC_OBJ      ${CMAKE_BINARY_DIR}/alloc.o)
+set(CLOCK_OBJ      ${CMAKE_BINARY_DIR}/clock.o)
+set(KERNEL_OBJ     ${CMAKE_BINARY_DIR}/kernel.o)
+set(KERNEL_BIN     ${CMAKE_BINARY_DIR}/kernel.bin)
+set(DISK_IMAGE     ${CMAKE_BINARY_DIR}/AxesOS.img)
 
 set(COMMON_CFLAGS
     -ffreestanding -nostdlib -fno-stack-protector -fno-pie -fno-pic
@@ -34,9 +34,16 @@ set(COMMON_CFLAGS
 
 add_custom_command(
     OUTPUT ${BOOTLOADER_BIN}
-    COMMAND nasm -f bin ${LOAD_DIR}/bootloader.asm -o ${BOOTLOADER_BIN}
-    DEPENDS ${LOAD_DIR}/bootloader.asm
-    COMMENT "Compiling bootloader"
+    COMMAND nasm -f bin -I${LOAD_DIR}/ ${LOAD_DIR}/bootloader.asm -o ${BOOTLOADER_BIN}
+    DEPENDS ${LOAD_DIR}/bootloader.asm ${LOAD_DIR}/bootloader.inc
+    COMMENT "Compiling stage1"
+)
+
+add_custom_command(
+    OUTPUT ${STAGE2_BIN}
+    COMMAND nasm -f bin -I${LOAD_DIR}/ ${LOAD_DIR}/bootloader.stage2.asm -o ${STAGE2_BIN}
+    DEPENDS ${LOAD_DIR}/bootloader.stage2.asm ${LOAD_DIR}/bootloader.inc
+    COMMENT "Compiling stage2"
 )
 
 add_custom_command(
@@ -55,8 +62,7 @@ add_custom_command(
 
 add_custom_command(
     OUTPUT ${IDT_OBJ}
-    COMMAND gcc ${COMMON_CFLAGS}
-            -I${SOURCE_DIR} -I${INT_DIR}
+    COMMAND gcc ${COMMON_CFLAGS} -I${SOURCE_DIR} -I${INT_DIR}
             -c ${INT_DIR}/IDT.c -o ${IDT_OBJ}
     DEPENDS ${INT_DIR}/IDT.c ${INT_DIR}/IDT.h
     COMMENT "Compiling IDT"
@@ -73,8 +79,7 @@ add_custom_command(
 
 add_custom_command(
     OUTPUT ${PIC_OBJ}
-    COMMAND gcc ${COMMON_CFLAGS}
-            -I${SOURCE_DIR} -I${INT_DIR}
+    COMMAND gcc ${COMMON_CFLAGS} -I${SOURCE_DIR} -I${INT_DIR}
             -c ${INT_DIR}/pic.c -o ${PIC_OBJ}
     DEPENDS ${INT_DIR}/pic.c ${INT_DIR}/pic.h
     COMMENT "Compiling PIC"
@@ -91,8 +96,7 @@ add_custom_command(
 
 add_custom_command(
     OUTPUT ${VIDEO_OBJ}
-    COMMAND gcc ${COMMON_CFLAGS}
-            -I${SOURCE_DIR} -I${VIDEO_DIR}
+    COMMAND gcc ${COMMON_CFLAGS} -I${SOURCE_DIR} -I${VIDEO_DIR}
             -c ${VIDEO_DIR}/video.c -o ${VIDEO_OBJ}
     DEPENDS ${VIDEO_DIR}/video.c ${VIDEO_DIR}/video.h
     COMMENT "Compiling video driver"
@@ -163,16 +167,14 @@ add_custom_command(
 add_custom_command(
     OUTPUT ${DISK_IMAGE}
     COMMAND dd if=/dev/zero of=${DISK_IMAGE} bs=512 count=2880 status=none
-    COMMAND dd if=${BOOTLOADER_BIN} of=${DISK_IMAGE} bs=512 count=1 conv=notrunc status=none
-    COMMAND dd if=${KERNEL_BIN} of=${DISK_IMAGE} bs=512 seek=1 conv=notrunc status=none
-    DEPENDS ${BOOTLOADER_BIN} ${KERNEL_BIN}
+    COMMAND dd if=${BOOTLOADER_BIN} of=${DISK_IMAGE} bs=512 seek=0   conv=notrunc status=none
+    COMMAND dd if=${STAGE2_BIN}     of=${DISK_IMAGE} bs=512 seek=1   conv=notrunc status=none
+    COMMAND dd if=${KERNEL_BIN}     of=${DISK_IMAGE} bs=512 seek=129 conv=notrunc status=none
+    DEPENDS ${BOOTLOADER_BIN} ${STAGE2_BIN} ${KERNEL_BIN}
     COMMENT "Creating disk image"
 )
 
-add_custom_target(image ALL
-    DEPENDS ${DISK_IMAGE}
-    COMMENT "Building OS image"
-)
+add_custom_target(image ALL DEPENDS ${DISK_IMAGE} COMMENT "Building OS image")
 
 add_custom_target(run
     COMMAND qemu-system-x86_64 -drive file=${DISK_IMAGE},format=raw,if=ide,index=0 -no-reboot -no-shutdown
@@ -182,7 +184,8 @@ add_custom_target(run
 
 add_custom_target(clean-all
     COMMAND ${CMAKE_COMMAND} -E remove -f
-            ${BOOTLOADER_BIN} ${TTS_OBJ} ${ISR_OBJ} ${IDT_OBJ} ${ISR_C_OBJ}
+            ${BOOTLOADER_BIN} ${STAGE2_BIN}
+            ${TTS_OBJ} ${ISR_OBJ} ${IDT_OBJ} ${ISR_C_OBJ}
             ${PIC_OBJ} ${TOCLICK_OBJ} ${VIDEO_OBJ}
             ${ALLOCATOR_OBJ} ${ALLOC_OBJ} ${CLOCK_OBJ}
             ${KERNEL_OBJ} ${KERNEL_BIN} ${DISK_IMAGE}
