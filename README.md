@@ -16,5 +16,5 @@
 
 QEMU:
 ```sh
-qemu-system-x86_64 -drive file=AxesOS.img,format=raw,if=ide,index=0 -debugcon stdio
+qemu-system-x86_64 -drive file=AxesOS.img,format=raw,if=ide,index=0 -no-reboot -no-shutdown -d int,cpu_reset -D qemu.log
 ```

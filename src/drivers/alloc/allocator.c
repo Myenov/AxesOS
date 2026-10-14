@@ -2,8 +2,15 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "allocator.h"
-#include "../video/video.h"
-#include "../str.h"
+
+#define PML4_PHYS   0x1000
+#define PDPT_PHYS   0x2000
+#define PD0_PHYS    0x3000
+#define PAGE_SIZE   0x1000
+#define HUGE_PAGE   0x200000
+#define GB          0x40000000
+
+static uint64_t next_free_phys = 0x150000;
 
 typedef struct {
     uint64_t base_addr;
@@ -44,9 +51,55 @@ static void remove_list(int level, Node* node) {
     node->free = false;
 }
 
-void init_alloc_driver(uint64_t e820_count) {
-    MMEmmap* mmap = (MMEmmap*)0x6000;
+static uint64_t alloc_page_phys(void) {
+    uint64_t p = next_free_phys;
+    next_free_phys += PAGE_SIZE;
+    uint8_t *ptr = (uint8_t*)p;
+    for (uint16_t i = 0; i < 4096; i++) ptr[i] = 0;
+    return p;
+}
 
+static void map_huge2mb(uint64_t phys_addr) {
+    uint64_t pml4_idx = (phys_addr >> 39) & 0x1FF;
+    uint64_t pdpt_idx = (phys_addr >> 30) & 0x1FF;
+    uint64_t pd_idx   = (phys_addr >> 21) & 0x1FF;
+
+    uint64_t *pml4 = (uint64_t*)PML4_PHYS;
+    if (!(pml4[pml4_idx] & 1)) {
+        uint64_t pdpt = alloc_page_phys();
+        pml4[pml4_idx] = pdpt | 0x03; // pw
+    }
+    uint64_t *pdpt = (uint64_t*)(pml4[pml4_idx] & ~0xFFFULL);
+    
+    if (!(pdpt[pdpt_idx] & 1)) {
+        uint64_t pd = alloc_page_phys();
+        pdpt[pdpt_idx] = pd | 0x03;
+    }
+    uint64_t *pd = (uint64_t*)(pdpt[pdpt_idx] & ~0xFFFULL);
+    pd[pd_idx] = (phys_addr & ~0x1FFFFFULL) | 0x83;
+}
+
+static void flush_tlb(void) {
+    uint64_t cr3;
+    asm volatile("mov %%cr3, %0" : "=r"(cr3));
+    asm volatile("mov %0, %%cr3" : : "r"(cr3) : "memory");
+}
+
+void map_all_ram(uint64_t max_addr) {
+    max_addr = (max_addr + HUGE_PAGE - 1) & ~(HUGE_PAGE - 1);
+    if (max_addr < 0x100000000ULL) max_addr = 0x100000000ULL;
+
+    for (uint64_t addr = GB; addr < max_addr; addr += HUGE_PAGE) {
+        map_huge2mb(addr);
+    }
+
+    flush_tlb();
+}
+
+void init_alloc_driver(uint64_t e820_count, uintptr_t ebda_address, uint8_t ebda_size) {
+    MMEmmap* mmap = (MMEmmap*)0x6000;
+    uint64_t max_addr = 0;
+    
     for (uint32_t i = 0; i < e820_count; i++) {
         all_ram += mmap[i].length;
 
@@ -78,13 +131,25 @@ void init_alloc_driver(uint64_t e820_count) {
                 add_list(MAX_LEVEL - 1, (Node*)p);
             }
         }
+        uint64_t end = mmap[i].base_addr + mmap[i].length;
+        if (end > max_addr) max_addr = end;
     }
-
+    
+    if (max_addr > GB) {
+        map_all_ram(max_addr);
+    }
+    reserve_range(0x4000, 0x100000);
     reserve_range(0x0, 0x200000);
     reserve_range(0x10000, 0x200000);
     reserve_range(0x90000, 0xA0000);
     reserve_range(0xB8000, 0xC0000);
-    
+    reserve_range(0x000E0000, 0x000FFFFF);
+    reserve_range(0x00000, 0x003FF); // IVT
+    reserve_range(0x00400, 0x004FF); //BDA
+    reserve_range(0x00500, 0x9FBFF);
+    reserve_range(ebda_address, ebda_address+(ebda_size*1024)); //EBDA
+    reserve_range(0xA0000, 0xBFFFF); //VGA
+    reserve_range(0xC0000, 0xFFFFF); //BIOS area
 }
 
 void* buddy_alloc(uint64_t size) {

@@ -3,6 +3,7 @@ project(AxesOS C ASM_NASM)
 
 set(SOURCE_DIR    ${CMAKE_SOURCE_DIR}/src)
 set(LOAD_DIR      ${SOURCE_DIR}/load)
+set(APP_DIR       ${SOURCE_DIR}/app)
 set(KERNEL_DIR    ${SOURCE_DIR}/kernel)
 set(DRIVERS_DIR   ${SOURCE_DIR}/drivers)
 set(INT_DIR       ${DRIVERS_DIR}/int)
@@ -10,6 +11,11 @@ set(KEYBOARD_DIR  ${DRIVERS_DIR}/keyboard)
 set(VIDEO_DIR     ${DRIVERS_DIR}/video)
 set(ALLOC_DIR     ${DRIVERS_DIR}/alloc)
 set(CLOCK_DIR     ${DRIVERS_DIR}/clock)
+set(SIGN_DIR      ${DRIVERS_DIR}/sign)
+set(APIC_DIR      ${DRIVERS_DIR}/apic)
+set(HPET_DIR      ${APIC_DIR}/hpet)
+set(XSDT_DIR      ${APIC_DIR}/xsdt)
+set(TERMINAL_DIR  ${APP_DIR}/terminal)
 
 set(BOOTLOADER_BIN ${CMAKE_BINARY_DIR}/bootloader.bin)
 set(STAGE2_BIN     ${CMAKE_BINARY_DIR}/bootloader.stage2.bin)
@@ -23,7 +29,11 @@ set(VIDEO_OBJ      ${CMAKE_BINARY_DIR}/video.o)
 set(ALLOCATOR_OBJ  ${CMAKE_BINARY_DIR}/allocator.o)
 set(ALLOC_OBJ      ${CMAKE_BINARY_DIR}/alloc.o)
 set(CLOCK_OBJ      ${CMAKE_BINARY_DIR}/clock.o)
+set(SIGN_OBJ       ${CMAKE_BINARY_DIR}/signature_search.o)
+set(HPET_OBJ       ${CMAKE_BINARY_DIR}/hpet.o)
+set(HSEARCH_OBJ    ${CMAKE_BINARY_DIR}/headers_search.o)
 set(KERNEL_OBJ     ${CMAKE_BINARY_DIR}/kernel.o)
+set(TERMINAL_OBJ   ${CMAKE_BINARY_DIR}/terminal.o)
 set(KERNEL_BIN     ${CMAKE_BINARY_DIR}/kernel.bin)
 set(DISK_IMAGE     ${CMAKE_BINARY_DIR}/AxesOS.img)
 
@@ -124,23 +134,68 @@ add_custom_command(
 add_custom_command(
     OUTPUT ${CLOCK_OBJ}
     COMMAND gcc ${COMMON_CFLAGS}
-            -I${SOURCE_DIR} -I${CLOCK_DIR} -I${DRIVERS_DIR}
+            -I${SOURCE_DIR} -I${CLOCK_DIR} -I${DRIVERS_DIR} -I${APIC_DIR} -I${HPET_DIR}
             -c ${CLOCK_DIR}/clock.c -o ${CLOCK_OBJ}
     DEPENDS ${CLOCK_DIR}/clock.c ${CLOCK_DIR}/clock.h ${DRIVERS_DIR}/outb_and_inb.h
+            ${HPET_DIR}/hpet.h
     COMMENT "Compiling clock driver"
+)
+
+add_custom_command(
+    OUTPUT ${SIGN_OBJ}
+    COMMAND gcc ${COMMON_CFLAGS}
+            -I${SOURCE_DIR} -I${SIGN_DIR} -I${DRIVERS_DIR}
+            -c ${SIGN_DIR}/signature_search.c -o ${SIGN_OBJ}
+    DEPENDS ${SIGN_DIR}/signature_search.c ${SIGN_DIR}/signature_search.h
+    COMMENT "Compiling signature search"
+)
+
+add_custom_command(
+    OUTPUT ${HSEARCH_OBJ}
+    COMMAND gcc ${COMMON_CFLAGS}
+            -I${SOURCE_DIR} -I${APIC_DIR} -I${XSDT_DIR} -I${DRIVERS_DIR}
+            -c ${APIC_DIR}/headers_search.c -o ${HSEARCH_OBJ}
+    DEPENDS ${APIC_DIR}/headers_search.c ${APIC_DIR}/headers_search.h
+            ${XSDT_DIR}/xsdt.h ${APIC_DIR}/ACPI.h
+    COMMENT "Compiling ACPI headers search"
+)
+
+add_custom_command(
+    OUTPUT ${HPET_OBJ}
+    COMMAND gcc ${COMMON_CFLAGS}
+            -I${SOURCE_DIR} -I${APIC_DIR} -I${HPET_DIR} -I${XSDT_DIR} -I${DRIVERS_DIR}
+            -c ${HPET_DIR}/hpet.c -o ${HPET_OBJ}
+    DEPENDS ${HPET_DIR}/hpet.c ${HPET_DIR}/hpet.h
+            ${APIC_DIR}/ACPI.h ${XSDT_DIR}/xsdt.h
+    COMMENT "Compiling HPET"
 )
 
 add_custom_command(
     OUTPUT ${KERNEL_OBJ}
     COMMAND gcc ${COMMON_CFLAGS}
             -I${SOURCE_DIR} -I${KERNEL_DIR} -I${VIDEO_DIR} -I${INT_DIR}
-            -I${KEYBOARD_DIR} -I${ALLOC_DIR} -I${DRIVERS_DIR}
+            -I${KEYBOARD_DIR} -I${ALLOC_DIR} -I${DRIVERS_DIR} -I${CLOCK_DIR}
+            -I${SIGN_DIR} -I${APIC_DIR} -I${HPET_DIR} -I${XSDT_DIR}
             -c ${KERNEL_DIR}/kernel.c -o ${KERNEL_OBJ}
     DEPENDS ${KERNEL_DIR}/kernel.c
             ${VIDEO_DIR}/video.h ${INT_DIR}/isr.h ${INT_DIR}/pic.h
             ${KEYBOARD_DIR}/toclick.h ${ALLOC_DIR}/allocator.h ${ALLOC_DIR}/alloc.h
-            ${DRIVERS_DIR}/str.h
+            ${DRIVERS_DIR}/str.h ${CLOCK_DIR}/clock.h ${SIGN_DIR}/signature_search.h
+            ${APIC_DIR}/headers_search.h ${XSDT_DIR}/xsdt.h
     COMMENT "Compiling kernel"
+)
+
+add_custom_command(
+    OUTPUT ${TERMINAL_OBJ}
+    COMMAND gcc ${COMMON_CFLAGS}
+            -I${SOURCE_DIR} -I${APP_DIR} -I${TERMINAL_DIR}
+            -I${DRIVERS_DIR} -I${ALLOC_DIR} -I${VIDEO_DIR}
+            -I${KEYBOARD_DIR} -I${CLOCK_DIR} -I${SIGN_DIR}
+            -c ${TERMINAL_DIR}/main.c -o ${TERMINAL_OBJ}
+    DEPENDS ${TERMINAL_DIR}/main.c
+            ${DRIVERS_DIR}/alloc/alloc.h ${DRIVERS_DIR}/video/video.h
+            ${DRIVERS_DIR}/keyboard/toclick.h ${DRIVERS_DIR}/clock/clock.h
+    COMMENT "Compiling terminal"
 )
 
 add_custom_command(
@@ -156,10 +211,15 @@ add_custom_command(
             ${ALLOCATOR_OBJ}
             ${ALLOC_OBJ}
             ${CLOCK_OBJ}
+            ${SIGN_OBJ}
+            ${HPET_OBJ}
+            ${HSEARCH_OBJ}
             ${TTS_OBJ}
+            ${TERMINAL_OBJ}
     DEPENDS ${KERNEL_OBJ} ${VIDEO_OBJ} ${IDT_OBJ} ${ISR_C_OBJ} ${ISR_OBJ}
             ${PIC_OBJ} ${TOCLICK_OBJ} ${ALLOCATOR_OBJ} ${ALLOC_OBJ}
-            ${CLOCK_OBJ} ${TTS_OBJ}
+            ${CLOCK_OBJ} ${SIGN_OBJ} ${HPET_OBJ} ${HSEARCH_OBJ}
+            ${TTS_OBJ} ${TERMINAL_OBJ}
             ${CMAKE_SOURCE_DIR}/linker.ld
     COMMENT "Linking kernel"
 )
@@ -175,19 +235,3 @@ add_custom_command(
 )
 
 add_custom_target(image ALL DEPENDS ${DISK_IMAGE} COMMENT "Building OS image")
-
-add_custom_target(run
-    COMMAND qemu-system-x86_64 -drive file=${DISK_IMAGE},format=raw,if=ide,index=0 -no-reboot -no-shutdown
-    DEPENDS ${DISK_IMAGE}
-    COMMENT "Running in QEMU"
-)
-
-add_custom_target(clean-all
-    COMMAND ${CMAKE_COMMAND} -E remove -f
-            ${BOOTLOADER_BIN} ${STAGE2_BIN}
-            ${TTS_OBJ} ${ISR_OBJ} ${IDT_OBJ} ${ISR_C_OBJ}
-            ${PIC_OBJ} ${TOCLICK_OBJ} ${VIDEO_OBJ}
-            ${ALLOCATOR_OBJ} ${ALLOC_OBJ} ${CLOCK_OBJ}
-            ${KERNEL_OBJ} ${KERNEL_BIN} ${DISK_IMAGE}
-    COMMENT "Cleaning all generated files"
-)

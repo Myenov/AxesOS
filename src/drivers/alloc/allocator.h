@@ -10,7 +10,7 @@
 #define PAGE_SHIFT 12
 
 void reserve_range(uint64_t start, uint64_t end);
-void init_alloc_driver(uint64_t e820_count);
+void init_alloc_driver(uint64_t e820_count, uintptr_t ebda_address, uint8_t ebda_size);
 static bool take_block(uint64_t addr, int level);
 void buddy_free(void* ptr, uint64_t size);
 void* buddy_alloc(uint64_t size);
