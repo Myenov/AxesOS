@@ -66,4 +66,55 @@ static inline char* ptr_to_str(void *ptr, char *buf) {
     return buf;
 }
 
+static inline int int_to_str(long val, char* str, int d) {
+    int i = 0;
+    while (val) {
+        str[i++] = (val % 10) + '0';
+        val /= 10;
+    }
+    if (i == 0) {
+        str[i++] = '0';
+    }
+    while (i < d) {
+        str[i++] = '0';
+    }
+    reverse_string(str, i);
+    str[i] = '\0';
+    return i;
+}
+
+
+static inline char* float_to_char(float n, char* buf, int afterpoint) {
+    int i = 0;
+    if (n < 0.0f) {
+        buf[i++] = '-';
+        n = -n;
+    }
+
+    long ipart = (long)n;
+    float fpart = n - (float)ipart;
+
+    char int_str[20];
+    int int_len = int_to_str(ipart, int_str, 0);
+    for (int j = 0; j < int_len; j++) {
+        buf[i++] = int_str[j];
+    }
+
+    if (afterpoint != 0) {
+        buf[i++] = '.';
+        long mult = 1;
+        for (int j = 0; j < afterpoint; j++) {
+            mult *= 10;
+        }
+
+        long dpart = (long)(fpart * mult + 0.5f);
+        char frac_str[20];
+        int frac_len = int_to_str(dpart, frac_str, afterpoint);
+        for (int j = 0; j < frac_len; j++) {
+            buf[i++] = frac_str[j];
+        }
+    }
+    buf[i] = '\0';
+    return buf;
+}
 #endif

@@ -142,30 +142,30 @@ extern void kernel_main(uint64_t e820_count) {
     init_keyboard_driver();
     asm volatile("sti");
 
-    char *buffer = (char *)malloc(21);
-    if (!buffer) {
-        print("Buffer noalloc");
-    }
+    // char *buffer = (char *)malloc(21);
+    // if (!buffer) {
+    //     print("Buffer noalloc");
+    // }
     
-    uint64_t *test = (uint64_t *)malloc(8);
-    if (!test) {
-        free(buffer);
-        print("Test noalloc");
-    }
+    // uint64_t *test = (uint64_t *)malloc(8);
+    // if (!test) {
+    //     free(buffer);
+    //     print("Test noalloc");
+    // }
     
-    *test = (uint64_t)rdtsc_serialized();
-    char numbuf[21];
-    print(uint64_to_str(*test, numbuf));
+    // *test = (uint64_t)rdtsc_serialized();
+    // char numbuf[21];
+    // print(uint64_to_str(*test, numbuf));
     
-    free(test);
-    free(buffer);
+    // free(test);
+    // free(buffer);
     
-    terminal_main();
-    while(1) {
-        print_symbol('|');
-        to_backspace();
-        if (is_new_data_available()) print_symbol(get_last_click());
-    }
+    // terminal_main();
+    // while(1) {
+    //     print_symbol('|');
+    //     to_backspace();
+    //     if (is_new_data_available()) print_symbol(get_last_click());
+    // }
 
     while (1) {
         asm volatile("hlt");
