@@ -1,8 +1,9 @@
 #include "isr.h"
 #include "IDT.h"
 #include <stdint.h>
-#include "../../lib/video/video.h"
-#include "../../lib/string/str.h"
+// #include "../../lib/video/video.h"
+// #include "../../lib/string/str.h"
+#include "../../lib/keyboard/toclick.h"
 
 void* isr_stub_table[] = {
     isr0, isr1, isr2, isr3, isr4, isr5, isr6, isr7,
@@ -43,8 +44,6 @@ void idt_init() {
 void isr_handler(registers_t* regs) {
     (void)regs;
 }
-
-#include "../keyboard/toclick.h"
 
 void irq_handler(registers_t* regs) {
     (void)regs;
