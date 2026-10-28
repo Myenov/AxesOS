@@ -1,4 +1,4 @@
-#include "video.h"
+#include "../../lib/video/video.h"
 
 volatile unsigned char default_color = DEFAULT_COLOR;
 volatile unsigned char default_fon_color = DEFAULT_FON_COLOR;

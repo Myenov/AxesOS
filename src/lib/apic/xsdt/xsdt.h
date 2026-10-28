@@ -1,7 +1,7 @@
-#ifndef RSDP_H
-#define RSDP_H
+#ifndef XSDP_H
+#define XSDP_H
 
-#include "../ACPI.h"
+#include "../../../drivers/apic/ACPI.h"
 #include <stdint.h>
 
 struct XSDT {

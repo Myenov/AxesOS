@@ -1,4 +1,4 @@
-#include "toclick.h"
+#include "../../lib/keyboard/toclick.h"
 #include <stdint.h>
 
 #define BUFFER_SIZE 256

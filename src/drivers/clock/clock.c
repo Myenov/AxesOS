@@ -1,4 +1,4 @@
-#include "clock.h"
+#include "../../lib/clock/clock.h"
 #include <stdint.h>
 
 volatile uint64_t *hpet_address;
@@ -6,8 +6,8 @@ volatile uint64_t *hpet_address;
 
 #define DEBUG_CLOCK
 #ifdef DEBUG_CLOCK
-#include "../video/video.h"
-#include "../str.h"
+#include "../../lib/video/video.h"
+#include "../../lib/string/str.h"
 #endif
 
 #define GENERAL_CONF_REGISTER_HPET_OFFSET 0x010
@@ -52,7 +52,6 @@ void init_clock_driver(struct HPETTable *hpet) {
     hpet_address = (volatile uint64_t *)hpet->base_address.address;
 
     uint64_t data_0x000 = _read_hpet(0x000);
-    uint8_t  num_timers = (data_0x000 & 0x1F) + 1;
     uint32_t period = (uint32_t)(data_0x000 >> 32);
 
     uint64_t hpet_freq = (period != 0) ? (1000000000000000ULL / period) : 0;
@@ -68,7 +67,7 @@ void init_clock_driver(struct HPETTable *hpet) {
         for (uint16_t i = 0; i < 21; i++) buffer[i] = ' ';
         print("\nnum_timers: ");
         for (uint16_t i = 0; i < 21; i++) buffer[i] = ' ';
-        print(uint64_to_str(num_timers, buffer));
+        print(uint64_to_str((data_0x000 & 0x1F) + 1, buffer));
         print("\nis 64-bits main counter: ");
         if (((data_0x000 >> 13) & 1) == 0) print("False. 32Bits");
         else print("True. 64Bits");

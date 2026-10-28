@@ -1,8 +1,8 @@
 #include "../ACPI.h"
-#include "../xsdt/xsdt.h"
-#include "../../sign/signature_search.h"
+#include "../../../lib/apic/xsdt/xsdt.h"
+#include "../../../lib/signature/signature_search.h"
 #include <stdint.h>
-#include "hpet.h"
+#include "../../../lib/apic/hpet/hpet.h"
 #include <stddef.h>
 
 int sig_eq(const char *a, const char *b, size_t n) {

@@ -1,6 +1,7 @@
 #include "stdint.h"
 #include "stdbool.h"
 #include "stddef.h"
+#include "../../lib/signature/signature_search.h"
 
 
 unsigned char *find_sign(unsigned char *address, size_t size, const unsigned char *bmask,const char *szmask) {

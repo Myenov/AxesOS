@@ -1,7 +1,7 @@
 #ifndef HPET_H
 #define HPET_H
 
-#include "../ACPI.h"
+#include "../../../drivers/apic/ACPI.h"
 #include "../xsdt/xsdt.h"
 #include <stdint.h>
 

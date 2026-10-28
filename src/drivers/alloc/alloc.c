@@ -1,5 +1,5 @@
-#include "alloc.h"
-#include "allocator.h"
+#include "../../lib/memory/alloc.h"
+#include "../../lib/memory/allocator.h"
 
 void* memcpy(void* dst, const void* src, size_t n) {
     uint8_t* d = (uint8_t*)dst;

@@ -1,7 +1,7 @@
 #ifndef CLOCK_FILE_DRIVER
 #define CLOCK_FILE_DRIVER
 
-#include "../outb_and_inb.h"
+#include "../utils/outb_and_inb.h"
 #include "../apic/hpet/hpet.h"
 #include <stdint.h>
 

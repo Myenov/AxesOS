@@ -6,6 +6,8 @@ set(LOAD_DIR      ${SOURCE_DIR}/load)
 set(APP_DIR       ${SOURCE_DIR}/app)
 set(KERNEL_DIR    ${SOURCE_DIR}/kernel)
 set(DRIVERS_DIR   ${SOURCE_DIR}/drivers)
+set(LIB_DIR       ${SOURCE_DIR}/lib)
+
 set(INT_DIR       ${DRIVERS_DIR}/int)
 set(KEYBOARD_DIR  ${DRIVERS_DIR}/keyboard)
 set(VIDEO_DIR     ${DRIVERS_DIR}/video)
@@ -14,7 +16,19 @@ set(CLOCK_DIR     ${DRIVERS_DIR}/clock)
 set(SIGN_DIR      ${DRIVERS_DIR}/sign)
 set(APIC_DIR      ${DRIVERS_DIR}/apic)
 set(HPET_DIR      ${APIC_DIR}/hpet)
-set(XSDT_DIR      ${APIC_DIR}/xsdt)
+
+set(LIB_ALLOC_DIR   ${LIB_DIR}/memory)
+set(LIB_CLOCK_DIR   ${LIB_DIR}/clock)
+set(LIB_VIDEO_DIR   ${LIB_DIR}/video)
+set(LIB_KEYBOARD_DIR ${LIB_DIR}/keyboard)
+set(LIB_SIGN_DIR    ${LIB_DIR}/signature)
+set(LIB_STR_DIR     ${LIB_DIR}/string)
+set(LIB_UTILS_DIR   ${LIB_DIR}/utils)
+set(LIB_APIC_DIR    ${LIB_DIR}/apic)
+set(LIB_XSDT_DIR    ${LIB_APIC_DIR}/xsdt)
+set(LIB_RSDP_DIR    ${LIB_APIC_DIR}/rsdp)
+set(LIB_HPET_DIR    ${LIB_APIC_DIR}/hpet)
+
 set(TERMINAL_DIR  ${APP_DIR}/terminal)
 
 set(BOOTLOADER_BIN ${CMAKE_BINARY_DIR}/bootloader.bin)
@@ -40,6 +54,35 @@ set(DISK_IMAGE     ${CMAKE_BINARY_DIR}/AxesOS.img)
 set(COMMON_CFLAGS
     -ffreestanding -nostdlib -fno-stack-protector -fno-pie -fno-pic
     -mno-red-zone -mcmodel=large -mno-mmx -mno-sse -mno-sse2 -O0
+)
+
+set(INCLUDES
+    -I${SOURCE_DIR}
+    -I${LOAD_DIR}
+    -I${APP_DIR}
+    -I${KERNEL_DIR}
+    -I${DRIVERS_DIR}
+    -I${INT_DIR}
+    -I${KEYBOARD_DIR}
+    -I${VIDEO_DIR}
+    -I${ALLOC_DIR}
+    -I${CLOCK_DIR}
+    -I${SIGN_DIR}
+    -I${APIC_DIR}
+    -I${HPET_DIR}
+    -I${TERMINAL_DIR}
+    -I${LIB_DIR}
+    -I${LIB_ALLOC_DIR}
+    -I${LIB_CLOCK_DIR}
+    -I${LIB_VIDEO_DIR}
+    -I${LIB_KEYBOARD_DIR}
+    -I${LIB_SIGN_DIR}
+    -I${LIB_STR_DIR}
+    -I${LIB_UTILS_DIR}
+    -I${LIB_APIC_DIR}
+    -I${LIB_XSDT_DIR}
+    -I${LIB_RSDP_DIR}
+    -I${LIB_HPET_DIR}
 )
 
 add_custom_command(
@@ -72,7 +115,7 @@ add_custom_command(
 
 add_custom_command(
     OUTPUT ${IDT_OBJ}
-    COMMAND gcc ${COMMON_CFLAGS} -I${SOURCE_DIR} -I${INT_DIR}
+    COMMAND gcc ${COMMON_CFLAGS} ${INCLUDES}
             -c ${INT_DIR}/IDT.c -o ${IDT_OBJ}
     DEPENDS ${INT_DIR}/IDT.c ${INT_DIR}/IDT.h
     COMMENT "Compiling IDT"
@@ -80,16 +123,17 @@ add_custom_command(
 
 add_custom_command(
     OUTPUT ${ISR_C_OBJ}
-    COMMAND gcc ${COMMON_CFLAGS}
-            -I${SOURCE_DIR} -I${INT_DIR} -I${KEYBOARD_DIR} -I${VIDEO_DIR}
+    COMMAND gcc ${COMMON_CFLAGS} ${INCLUDES}
             -c ${INT_DIR}/isr.c -o ${ISR_C_OBJ}
-    DEPENDS ${INT_DIR}/isr.c ${INT_DIR}/isr.h ${INT_DIR}/IDT.h ${KEYBOARD_DIR}/toclick.h
+    DEPENDS ${INT_DIR}/isr.c ${INT_DIR}/isr.h ${INT_DIR}/IDT.h
+            ${LIB_KEYBOARD_DIR}/toclick.h ${LIB_VIDEO_DIR}/video.h
+            ${LIB_STR_DIR}/str.h
     COMMENT "Compiling ISR C code"
 )
 
 add_custom_command(
     OUTPUT ${PIC_OBJ}
-    COMMAND gcc ${COMMON_CFLAGS} -I${SOURCE_DIR} -I${INT_DIR}
+    COMMAND gcc ${COMMON_CFLAGS} ${INCLUDES}
             -c ${INT_DIR}/pic.c -o ${PIC_OBJ}
     DEPENDS ${INT_DIR}/pic.c ${INT_DIR}/pic.h
     COMMENT "Compiling PIC"
@@ -97,104 +141,95 @@ add_custom_command(
 
 add_custom_command(
     OUTPUT ${TOCLICK_OBJ}
-    COMMAND gcc ${COMMON_CFLAGS}
-            -I${SOURCE_DIR} -I${KEYBOARD_DIR} -I${VIDEO_DIR}
+    COMMAND gcc ${COMMON_CFLAGS} ${INCLUDES}
             -c ${KEYBOARD_DIR}/toclick.c -o ${TOCLICK_OBJ}
-    DEPENDS ${KEYBOARD_DIR}/toclick.c ${KEYBOARD_DIR}/toclick.h ${VIDEO_DIR}/video.h
+    DEPENDS ${KEYBOARD_DIR}/toclick.c ${LIB_KEYBOARD_DIR}/toclick.h
     COMMENT "Compiling keyboard handler"
 )
 
 add_custom_command(
     OUTPUT ${VIDEO_OBJ}
-    COMMAND gcc ${COMMON_CFLAGS} -I${SOURCE_DIR} -I${VIDEO_DIR}
+    COMMAND gcc ${COMMON_CFLAGS} ${INCLUDES}
             -c ${VIDEO_DIR}/video.c -o ${VIDEO_OBJ}
-    DEPENDS ${VIDEO_DIR}/video.c ${VIDEO_DIR}/video.h
+    DEPENDS ${VIDEO_DIR}/video.c ${LIB_VIDEO_DIR}/video.h
     COMMENT "Compiling video driver"
 )
 
 add_custom_command(
     OUTPUT ${ALLOCATOR_OBJ}
-    COMMAND gcc ${COMMON_CFLAGS}
-            -I${SOURCE_DIR} -I${ALLOC_DIR} -I${VIDEO_DIR} -I${DRIVERS_DIR}
+    COMMAND gcc ${COMMON_CFLAGS} ${INCLUDES}
             -c ${ALLOC_DIR}/allocator.c -o ${ALLOCATOR_OBJ}
-    DEPENDS ${ALLOC_DIR}/allocator.c ${ALLOC_DIR}/allocator.h
-            ${DRIVERS_DIR}/str.h ${VIDEO_DIR}/video.h
+    DEPENDS ${ALLOC_DIR}/allocator.c ${LIB_ALLOC_DIR}/allocator.h
     COMMENT "Compiling allocator"
 )
 
 add_custom_command(
     OUTPUT ${ALLOC_OBJ}
-    COMMAND gcc ${COMMON_CFLAGS}
-            -I${SOURCE_DIR} -I${ALLOC_DIR} -I${DRIVERS_DIR}
+    COMMAND gcc ${COMMON_CFLAGS} ${INCLUDES}
             -c ${ALLOC_DIR}/alloc.c -o ${ALLOC_OBJ}
-    DEPENDS ${ALLOC_DIR}/alloc.c ${ALLOC_DIR}/alloc.h ${ALLOC_DIR}/allocator.h
+    DEPENDS ${ALLOC_DIR}/alloc.c ${LIB_ALLOC_DIR}/alloc.h ${LIB_ALLOC_DIR}/allocator.h
     COMMENT "Compiling alloc wrappers"
 )
 
 add_custom_command(
     OUTPUT ${CLOCK_OBJ}
-    COMMAND gcc ${COMMON_CFLAGS}
-            -I${SOURCE_DIR} -I${CLOCK_DIR} -I${DRIVERS_DIR} -I${APIC_DIR} -I${HPET_DIR}
+    COMMAND gcc ${COMMON_CFLAGS} ${INCLUDES}
             -c ${CLOCK_DIR}/clock.c -o ${CLOCK_OBJ}
-    DEPENDS ${CLOCK_DIR}/clock.c ${CLOCK_DIR}/clock.h ${DRIVERS_DIR}/outb_and_inb.h
-            ${HPET_DIR}/hpet.h
+    DEPENDS ${CLOCK_DIR}/clock.c ${LIB_CLOCK_DIR}/clock.h
+            ${LIB_UTILS_DIR}/outb_and_inb.h ${LIB_HPET_DIR}/hpet.h
+            ${LIB_VIDEO_DIR}/video.h ${LIB_STR_DIR}/str.h
     COMMENT "Compiling clock driver"
 )
 
 add_custom_command(
     OUTPUT ${SIGN_OBJ}
-    COMMAND gcc ${COMMON_CFLAGS}
-            -I${SOURCE_DIR} -I${SIGN_DIR} -I${DRIVERS_DIR}
+    COMMAND gcc ${COMMON_CFLAGS} ${INCLUDES}
             -c ${SIGN_DIR}/signature_search.c -o ${SIGN_OBJ}
-    DEPENDS ${SIGN_DIR}/signature_search.c ${SIGN_DIR}/signature_search.h
+    DEPENDS ${SIGN_DIR}/signature_search.c ${LIB_SIGN_DIR}/signature_search.h
     COMMENT "Compiling signature search"
 )
 
 add_custom_command(
     OUTPUT ${HSEARCH_OBJ}
-    COMMAND gcc ${COMMON_CFLAGS}
-            -I${SOURCE_DIR} -I${APIC_DIR} -I${XSDT_DIR} -I${DRIVERS_DIR}
+    COMMAND gcc ${COMMON_CFLAGS} ${INCLUDES}
             -c ${APIC_DIR}/headers_search.c -o ${HSEARCH_OBJ}
-    DEPENDS ${APIC_DIR}/headers_search.c ${APIC_DIR}/headers_search.h
-            ${XSDT_DIR}/xsdt.h ${APIC_DIR}/ACPI.h
+    DEPENDS ${APIC_DIR}/headers_search.c ${LIB_APIC_DIR}/headers_search.h
+            ${LIB_RSDP_DIR}/rsdp.h ${APIC_DIR}/ACPI.h
     COMMENT "Compiling ACPI headers search"
 )
 
 add_custom_command(
     OUTPUT ${HPET_OBJ}
-    COMMAND gcc ${COMMON_CFLAGS}
-            -I${SOURCE_DIR} -I${APIC_DIR} -I${HPET_DIR} -I${XSDT_DIR} -I${DRIVERS_DIR}
+    COMMAND gcc ${COMMON_CFLAGS} ${INCLUDES}
             -c ${HPET_DIR}/hpet.c -o ${HPET_OBJ}
-    DEPENDS ${HPET_DIR}/hpet.c ${HPET_DIR}/hpet.h
-            ${APIC_DIR}/ACPI.h ${XSDT_DIR}/xsdt.h
+    DEPENDS ${HPET_DIR}/hpet.c ${LIB_HPET_DIR}/hpet.h
+            ${APIC_DIR}/ACPI.h ${LIB_XSDT_DIR}/xsdt.h
+            ${LIB_SIGN_DIR}/signature_search.h
     COMMENT "Compiling HPET"
 )
 
 add_custom_command(
     OUTPUT ${KERNEL_OBJ}
-    COMMAND gcc ${COMMON_CFLAGS}
-            -I${SOURCE_DIR} -I${KERNEL_DIR} -I${VIDEO_DIR} -I${INT_DIR}
-            -I${KEYBOARD_DIR} -I${ALLOC_DIR} -I${DRIVERS_DIR} -I${CLOCK_DIR}
-            -I${SIGN_DIR} -I${APIC_DIR} -I${HPET_DIR} -I${XSDT_DIR}
+    COMMAND gcc ${COMMON_CFLAGS} ${INCLUDES}
             -c ${KERNEL_DIR}/kernel.c -o ${KERNEL_OBJ}
     DEPENDS ${KERNEL_DIR}/kernel.c
-            ${VIDEO_DIR}/video.h ${INT_DIR}/isr.h ${INT_DIR}/pic.h
-            ${KEYBOARD_DIR}/toclick.h ${ALLOC_DIR}/allocator.h ${ALLOC_DIR}/alloc.h
-            ${DRIVERS_DIR}/str.h ${CLOCK_DIR}/clock.h ${SIGN_DIR}/signature_search.h
-            ${APIC_DIR}/headers_search.h ${XSDT_DIR}/xsdt.h
+            ${LIB_VIDEO_DIR}/video.h ${INT_DIR}/isr.h ${INT_DIR}/pic.h
+            ${LIB_KEYBOARD_DIR}/toclick.h ${LIB_ALLOC_DIR}/allocator.h
+            ${LIB_ALLOC_DIR}/alloc.h ${LIB_STR_DIR}/str.h
+            ${LIB_CLOCK_DIR}/clock.h ${LIB_SIGN_DIR}/signature_search.h
+            ${LIB_APIC_DIR}/headers_search.h ${LIB_XSDT_DIR}/xsdt.h
+            ${LIB_RSDP_DIR}/rsdp.h ${APIC_DIR}/ACPI.h
     COMMENT "Compiling kernel"
 )
 
 add_custom_command(
     OUTPUT ${TERMINAL_OBJ}
-    COMMAND gcc ${COMMON_CFLAGS}
-            -I${SOURCE_DIR} -I${APP_DIR} -I${TERMINAL_DIR}
-            -I${DRIVERS_DIR} -I${ALLOC_DIR} -I${VIDEO_DIR}
-            -I${KEYBOARD_DIR} -I${CLOCK_DIR} -I${SIGN_DIR}
+    COMMAND gcc ${COMMON_CFLAGS} ${INCLUDES}
             -c ${TERMINAL_DIR}/main.c -o ${TERMINAL_OBJ}
     DEPENDS ${TERMINAL_DIR}/main.c
-            ${DRIVERS_DIR}/alloc/alloc.h ${DRIVERS_DIR}/video/video.h
-            ${DRIVERS_DIR}/keyboard/toclick.h ${DRIVERS_DIR}/clock/clock.h
+            ${LIB_ALLOC_DIR}/alloc.h ${LIB_VIDEO_DIR}/video.h
+            ${LIB_KEYBOARD_DIR}/toclick.h ${LIB_CLOCK_DIR}/clock.h
+            ${LIB_STR_DIR}/str.h
     COMMENT "Compiling terminal"
 )
 

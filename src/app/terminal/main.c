@@ -1,8 +1,8 @@
-#include "../../drivers/alloc/alloc.h"
-#include "../../drivers/video/video.h"
-#include "../../drivers/keyboard/toclick.h"
-#include "../../drivers/clock/clock.h"
-#include "../../drivers/str.h"
+#include "../../lib/memory/alloc.h"
+#include "../../lib/video/video.h"
+#include "../../lib/keyboard/toclick.h"
+#include "../../lib/clock/clock.h"
+#include "../../lib/string/str.h"
 
 #include <stdbool.h>
 #include <stdint.h>

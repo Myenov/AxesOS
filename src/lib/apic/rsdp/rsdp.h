@@ -2,6 +2,7 @@
 #define RSDT_H
 
 #include <stdint.h>
+#include "../../../drivers/apic/ACPI.h"
 
 struct RSDPDescriptor {
     char signature[8];

@@ -1,7 +1,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include "allocator.h"
+#include "../../lib/memory/allocator.h"
 
 #define PML4_PHYS   0x1000
 #define PDPT_PHYS   0x2000
