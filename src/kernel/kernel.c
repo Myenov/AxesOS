@@ -1,6 +1,6 @@
 #include "../lib/video/video.h"
 #include "../drivers/int/isr.h"
-#include "../drivers/int/pic.h"
+#include "../lib/apic/apic.h"
 #include "../lib/keyboard/toclick.h"
 #include "../lib/memory/allocator.h"
 #include "../lib/memory/alloc.h"
@@ -136,9 +136,10 @@ extern void kernel_main(uint64_t e820_count) {
     reserve_range((uint64_t)hpet, (uint64_t)hpet+sizeof(struct HPETTable));
     reserve_range(hpet->base_address.address, hpet->base_address.address + 0x400);
     init_clock_driver(hpet);
+    reserve_range(0xFEE00000, 0xFEE00000+64);
     
     
-    init_pic();
+    init_apic();
     init_keyboard_driver();
     asm volatile("sti");
 
