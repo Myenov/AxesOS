@@ -3,15 +3,31 @@
 #include "../../lib/keyboard/toclick.h"
 #include "../../lib/clock/clock.h"
 #include "../../lib/string/str.h"
+#include "../../lib/cpu/cpu.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 
 
 #define COMMAND_LENGHT 256
+bool is_run = true;
 
 void send_command(const char* buffer) {
     // чем гуще лес - тем if else if else
+    if (strcmp(buffer, "cpus") == 0) {
+        char nbuf[21];
+        print("\n\ncores: ");
+        print(uint64_to_str(cpu_topology.count, nbuf));
+        print("\n");
+        for (uint32_t i = 0; i < cpu_topology.count; i++) {
+            print("  apic_id=");
+            print(uint64_to_str(cpu_topology.cores[i].apic_id, nbuf));
+            print(" acpi_id=");
+            print(uint64_to_str(cpu_topology.cores[i].acpi_processor_id, nbuf));
+            print("\n");
+        }
+        return;
+    }
     if (strcmp(buffer, "rdtsc") == 0) {
         uint64_t rdtsc_c = (uint64_t)rdtsc_serialized();
         char *buf = (char *)malloc(21);
@@ -20,6 +36,12 @@ void send_command(const char* buffer) {
         print("\n!user->:");
         free(buf);
         return;
+    }
+    
+    if (strcmp(buffer, "exit") == 0) {
+        is_run = false;
+        return;
+            
     } else if (strcmp(buffer, "clear") == 0) {
         clear_screen();
         print("!user->:");
@@ -30,10 +52,10 @@ void send_command(const char* buffer) {
 }
 
 extern int terminal_main() {
-    clear_screen();
+    // clear_screen();
 
     char *buffer = (char *)malloc(COMMAND_LENGHT);
-    bool is_run = true;
+    
     uint16_t command_cursor = 0;
     print("!user->:");
     while (is_run) {

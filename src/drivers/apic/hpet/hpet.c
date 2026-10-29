@@ -5,12 +5,6 @@
 #include "../../../lib/apic/hpet/hpet.h"
 #include <stddef.h>
 
-int sig_eq(const char *a, const char *b, size_t n) {
-    for (size_t i = 0; i < n; i++)
-        if (a[i] != b[i]) return 0;
-    return 1;
-}
-
 struct HPETTable* search_HPET_table_in_XSDT(struct XSDT *xsdt) {
     uint64_t count = (xsdt->header.length - sizeof(struct ACPISDTHeader)) / sizeof(uint64_t);
 

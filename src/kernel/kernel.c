@@ -10,10 +10,13 @@
 #include "../lib/apic/xsdt/xsdt.h"
 #include "../lib/apic/rsdp/rsdp.h"
 #include "../lib/apic/headers_search.h"
+#include "../lib/apic/madt/madt.h"
+#include "../lib/cpu/cpu.h"
 #include <stdint.h>
 
 // #define KERNEL_DEBUG
 extern void init_tts();
+extern int terminal_main();
 
 __attribute__((section(".text.entry")))
 extern void kernel_main(uint64_t e820_count) {
@@ -74,6 +77,7 @@ extern void kernel_main(uint64_t e820_count) {
     struct RSDPDescriptor20 *rsdp = search_ACPIHeaders(rsdp_address);
     struct XSDT *xsdt = NULL;
     struct RSDT *rsdt = NULL;
+    struct MADT *madt = NULL;
     #ifdef KERNEL_DEBUG
     print("rsdp revision: ");
     print(uint64_to_str(rsdp->firstPart.revision, numbuffer));
@@ -83,7 +87,7 @@ extern void kernel_main(uint64_t e820_count) {
     if (rsdp->firstPart.revision < 2) {
         rsdt = (struct RSDT *)(uintptr_t)rsdp->firstPart.rsdt_address;
         reserve_range((uint64_t)rsdt, (uint64_t)rsdt+rsdt->header.length);
-
+        madt = search_MADT_in_RSDT(rsdt);
         #ifdef KERNEL_DEBUG
         for (uint8_t i = 0; i < 21; i++) numbuffer[i] = ' ';
         print("rsdt length: ");
@@ -95,7 +99,7 @@ extern void kernel_main(uint64_t e820_count) {
     } else {
         xsdt = (struct XSDT *)rsdp->xsdt_address;
         reserve_range((uint64_t)xsdt, (uint64_t)xsdt+xsdt->header.length);
-        
+        madt = search_MADT_in_XSDT(xsdt);
         #ifdef KERNEL_DEBUG
         for (uint8_t i = 0; i < 21; i++) numbuffer[i] = ' ';
         print("xsdt length: ");
@@ -105,7 +109,38 @@ extern void kernel_main(uint64_t e820_count) {
 
         hpet = search_HPET_table_in_XSDT(xsdt);
     }
+
+    #ifdef KERNEL_DEBUG
+    if (madt != NULL) {
+        for (uint8_t i = 0; i < 21; i++) numbuffer[i] = ' ';
+        print("MADT != NULL");
+        print_symbol('\n');
+    }
+    #endif  
     
+    reserve_range((uint64_t)madt, (uint64_t)madt + madt->header.length);
+    parse_madt_entry(madt);
+    uint32_t count = 0;
+    MADT_Stat* current = status;    
+    while (current) {
+        if (current->entry->type == 0) {
+            count++;
+        }
+        current = current->next;
+    }
+    cpu_topology.cores = (CpuCore*)malloc(count * sizeof(CpuCore));
+    cpu_topology.count = count;
+
+    current = status;
+    for (int i = 0; current; current = current->next) {
+        if (current->entry->type == 0) {
+            struct MADT_LocalAPIC *lapic = (struct MADT_LocalAPIC *)current->entry;
+            cpu_topology.cores[i].acpi_processor_id = lapic->acpiprocessorid;
+            cpu_topology.cores[i].apic_id = lapic->apicid;
+            cpu_topology.cores[i].flags = lapic->flags;
+            i++;
+        }
+    }
     
     #ifdef KERNEL_DEBUG
     for (uint8_t i = 0; i < 21; i++) numbuffer[i] = ' ';
@@ -161,12 +196,12 @@ extern void kernel_main(uint64_t e820_count) {
     // free(test);
     // free(buffer);
     
-    // terminal_main();
-    // while(1) {
-    //     print_symbol('|');
-    //     to_backspace();
-    //     if (is_new_data_available()) print_symbol(get_last_click());
-    // }
+    terminal_main();
+    while(1) {
+        print_symbol('|');
+        to_backspace();
+        if (is_new_data_available()) print_symbol(get_last_click());
+    }
 
     while (1) {
         asm volatile("hlt");

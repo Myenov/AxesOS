@@ -16,18 +16,23 @@ set(CLOCK_DIR     ${DRIVERS_DIR}/clock)
 set(SIGN_DIR      ${DRIVERS_DIR}/sign)
 set(APIC_DIR      ${DRIVERS_DIR}/apic)
 set(HPET_DIR      ${APIC_DIR}/hpet)
+set(MADT_DIR      ${APIC_DIR}/madt)
+set(CPU_DIR       ${DRIVERS_DIR}/cpu)
 
-set(LIB_ALLOC_DIR   ${LIB_DIR}/memory)
-set(LIB_CLOCK_DIR   ${LIB_DIR}/clock)
-set(LIB_VIDEO_DIR   ${LIB_DIR}/video)
+set(LIB_ALLOC_DIR    ${LIB_DIR}/memory)
+set(LIB_CLOCK_DIR    ${LIB_DIR}/clock)
+set(LIB_VIDEO_DIR    ${LIB_DIR}/video)
 set(LIB_KEYBOARD_DIR ${LIB_DIR}/keyboard)
-set(LIB_SIGN_DIR    ${LIB_DIR}/signature)
-set(LIB_STR_DIR     ${LIB_DIR}/string)
-set(LIB_UTILS_DIR   ${LIB_DIR}/utils)
-set(LIB_APIC_DIR    ${LIB_DIR}/apic)
-set(LIB_XSDT_DIR    ${LIB_APIC_DIR}/xsdt)
-set(LIB_RSDP_DIR    ${LIB_APIC_DIR}/rsdp)
-set(LIB_HPET_DIR    ${LIB_APIC_DIR}/hpet)
+set(LIB_SIGN_DIR     ${LIB_DIR}/signature)
+set(LIB_STR_DIR      ${LIB_DIR}/string)
+set(LIB_UTILS_DIR    ${LIB_DIR}/utils)
+set(LIB_MSR_DIR      ${LIB_DIR}/msr)
+set(LIB_CPU_DIR      ${LIB_DIR}/cpu)
+set(LIB_APIC_DIR     ${LIB_DIR}/apic)
+set(LIB_XSDT_DIR     ${LIB_APIC_DIR}/xsdt)
+set(LIB_RSDP_DIR     ${LIB_APIC_DIR}/rsdp)
+set(LIB_HPET_DIR     ${LIB_APIC_DIR}/hpet)
+set(LIB_MADT_DIR     ${LIB_APIC_DIR}/madt)
 
 set(TERMINAL_DIR  ${APP_DIR}/terminal)
 
@@ -37,7 +42,7 @@ set(TTS_OBJ        ${CMAKE_BINARY_DIR}/tts_init.o)
 set(ISR_OBJ        ${CMAKE_BINARY_DIR}/isr.o)
 set(IDT_OBJ        ${CMAKE_BINARY_DIR}/idt.o)
 set(ISR_C_OBJ      ${CMAKE_BINARY_DIR}/isr_c.o)
-set(PIC_OBJ        ${CMAKE_BINARY_DIR}/pic.o)
+set(APIC_OBJ       ${CMAKE_BINARY_DIR}/apic.o)
 set(TOCLICK_OBJ    ${CMAKE_BINARY_DIR}/toclick.o)
 set(VIDEO_OBJ      ${CMAKE_BINARY_DIR}/video.o)
 set(ALLOCATOR_OBJ  ${CMAKE_BINARY_DIR}/allocator.o)
@@ -45,7 +50,9 @@ set(ALLOC_OBJ      ${CMAKE_BINARY_DIR}/alloc.o)
 set(CLOCK_OBJ      ${CMAKE_BINARY_DIR}/clock.o)
 set(SIGN_OBJ       ${CMAKE_BINARY_DIR}/signature_search.o)
 set(HPET_OBJ       ${CMAKE_BINARY_DIR}/hpet.o)
+set(MADT_OBJ       ${CMAKE_BINARY_DIR}/madt.o)
 set(HSEARCH_OBJ    ${CMAKE_BINARY_DIR}/headers_search.o)
+set(CPU_OBJ        ${CMAKE_BINARY_DIR}/cpu.o)
 set(KERNEL_OBJ     ${CMAKE_BINARY_DIR}/kernel.o)
 set(TERMINAL_OBJ   ${CMAKE_BINARY_DIR}/terminal.o)
 set(KERNEL_BIN     ${CMAKE_BINARY_DIR}/kernel.bin)
@@ -70,6 +77,8 @@ set(INCLUDES
     -I${SIGN_DIR}
     -I${APIC_DIR}
     -I${HPET_DIR}
+    -I${MADT_DIR}
+    -I${CPU_DIR}
     -I${TERMINAL_DIR}
     -I${LIB_DIR}
     -I${LIB_ALLOC_DIR}
@@ -79,10 +88,13 @@ set(INCLUDES
     -I${LIB_SIGN_DIR}
     -I${LIB_STR_DIR}
     -I${LIB_UTILS_DIR}
+    -I${LIB_MSR_DIR}
+    -I${LIB_CPU_DIR}
     -I${LIB_APIC_DIR}
     -I${LIB_XSDT_DIR}
     -I${LIB_RSDP_DIR}
     -I${LIB_HPET_DIR}
+    -I${LIB_MADT_DIR}
 )
 
 add_custom_command(
@@ -126,17 +138,16 @@ add_custom_command(
     COMMAND gcc ${COMMON_CFLAGS} ${INCLUDES}
             -c ${INT_DIR}/isr.c -o ${ISR_C_OBJ}
     DEPENDS ${INT_DIR}/isr.c ${INT_DIR}/isr.h ${INT_DIR}/IDT.h
-            ${LIB_KEYBOARD_DIR}/toclick.h ${LIB_VIDEO_DIR}/video.h
-            ${LIB_STR_DIR}/str.h
+            ${LIB_KEYBOARD_DIR}/toclick.h
     COMMENT "Compiling ISR C code"
 )
 
 add_custom_command(
-    OUTPUT ${PIC_OBJ}
+    OUTPUT ${APIC_OBJ}
     COMMAND gcc ${COMMON_CFLAGS} ${INCLUDES}
-            -c ${INT_DIR}/pic.c -o ${PIC_OBJ}
-    DEPENDS ${INT_DIR}/pic.c ${INT_DIR}/pic.h
-    COMMENT "Compiling PIC"
+            -c ${INT_DIR}/apic.c -o ${APIC_OBJ}
+    DEPENDS ${INT_DIR}/apic.c ${LIB_APIC_DIR}/apic.h ${LIB_MSR_DIR}/msr.h
+    COMMENT "Compiling APIC driver"
 )
 
 add_custom_command(
@@ -209,16 +220,34 @@ add_custom_command(
 )
 
 add_custom_command(
+    OUTPUT ${MADT_OBJ}
+    COMMAND gcc ${COMMON_CFLAGS} ${INCLUDES}
+            -c ${MADT_DIR}/madt.c -o ${MADT_OBJ}
+    DEPENDS ${MADT_DIR}/madt.c ${LIB_MADT_DIR}/madt.h
+            ${APIC_DIR}/ACPI.h ${LIB_XSDT_DIR}/xsdt.h
+    COMMENT "Compiling MADT"
+)
+
+add_custom_command(
+    OUTPUT ${CPU_OBJ}
+    COMMAND gcc ${COMMON_CFLAGS} ${INCLUDES}
+            -c ${CPU_DIR}/cpu.c -o ${CPU_OBJ}
+    DEPENDS ${CPU_DIR}/cpu.c ${LIB_CPU_DIR}/cpu.h
+    COMMENT "Compiling CPU driver"
+)
+
+add_custom_command(
     OUTPUT ${KERNEL_OBJ}
     COMMAND gcc ${COMMON_CFLAGS} ${INCLUDES}
             -c ${KERNEL_DIR}/kernel.c -o ${KERNEL_OBJ}
     DEPENDS ${KERNEL_DIR}/kernel.c
-            ${LIB_VIDEO_DIR}/video.h ${INT_DIR}/isr.h ${INT_DIR}/pic.h
+            ${LIB_VIDEO_DIR}/video.h ${INT_DIR}/isr.h ${LIB_APIC_DIR}/apic.h
             ${LIB_KEYBOARD_DIR}/toclick.h ${LIB_ALLOC_DIR}/allocator.h
             ${LIB_ALLOC_DIR}/alloc.h ${LIB_STR_DIR}/str.h
             ${LIB_CLOCK_DIR}/clock.h ${LIB_SIGN_DIR}/signature_search.h
             ${LIB_APIC_DIR}/headers_search.h ${LIB_XSDT_DIR}/xsdt.h
-            ${LIB_RSDP_DIR}/rsdp.h ${APIC_DIR}/ACPI.h
+            ${LIB_RSDP_DIR}/rsdp.h ${LIB_MADT_DIR}/madt.h
+            ${LIB_CPU_DIR}/cpu.h ${APIC_DIR}/ACPI.h
     COMMENT "Compiling kernel"
 )
 
@@ -229,7 +258,7 @@ add_custom_command(
     DEPENDS ${TERMINAL_DIR}/main.c
             ${LIB_ALLOC_DIR}/alloc.h ${LIB_VIDEO_DIR}/video.h
             ${LIB_KEYBOARD_DIR}/toclick.h ${LIB_CLOCK_DIR}/clock.h
-            ${LIB_STR_DIR}/str.h
+            ${LIB_STR_DIR}/str.h ${LIB_CPU_DIR}/cpu.h
     COMMENT "Compiling terminal"
 )
 
@@ -241,19 +270,22 @@ add_custom_command(
             ${IDT_OBJ}
             ${ISR_C_OBJ}
             ${ISR_OBJ}
-            ${PIC_OBJ}
+            ${APIC_OBJ}
             ${TOCLICK_OBJ}
             ${ALLOCATOR_OBJ}
             ${ALLOC_OBJ}
             ${CLOCK_OBJ}
             ${SIGN_OBJ}
             ${HPET_OBJ}
+            ${MADT_OBJ}
             ${HSEARCH_OBJ}
+            ${CPU_OBJ}
             ${TTS_OBJ}
             ${TERMINAL_OBJ}
     DEPENDS ${KERNEL_OBJ} ${VIDEO_OBJ} ${IDT_OBJ} ${ISR_C_OBJ} ${ISR_OBJ}
-            ${PIC_OBJ} ${TOCLICK_OBJ} ${ALLOCATOR_OBJ} ${ALLOC_OBJ}
-            ${CLOCK_OBJ} ${SIGN_OBJ} ${HPET_OBJ} ${HSEARCH_OBJ}
+            ${APIC_OBJ} ${TOCLICK_OBJ} ${ALLOCATOR_OBJ} ${ALLOC_OBJ}
+            ${CLOCK_OBJ} ${SIGN_OBJ} ${HPET_OBJ} ${MADT_OBJ}
+            ${HSEARCH_OBJ} ${CPU_OBJ}
             ${TTS_OBJ} ${TERMINAL_OBJ}
             ${CMAKE_SOURCE_DIR}/linker.ld
     COMMENT "Linking kernel"
