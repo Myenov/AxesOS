@@ -1,9 +1,25 @@
 #include "../../lib/video/video.h"
+#include "../../lib/memory/alloc.h"
+#include <stdint.h>
 
 volatile unsigned char default_color = DEFAULT_COLOR;
 volatile unsigned char default_fon_color = DEFAULT_FON_COLOR;
 volatile unsigned char cursor_x = 0;
 volatile unsigned char cursor_y = 0;
+
+void scroll_up(void) {
+    for (int row = 1; row < VGA_HEIGHT; row++) {
+        for (int col = 0; col < VGA_WIDTH; col++) {
+            VIDEO_MEMORY[(row - 1) * VGA_WIDTH + col] =
+                VIDEO_MEMORY[row * VGA_WIDTH + col];
+        }
+    }
+    unsigned short blank = (default_fon_color << 8) | ' ';
+    for (int col = 0; col < VGA_WIDTH; col++) {
+        VIDEO_MEMORY[(VGA_HEIGHT - 1) * VGA_WIDTH + col] = blank;
+    }
+    cursor_y = VGA_HEIGHT - 1;
+}
 
 int get_buffer_len(const char* buffer) {
     int lenght = 0;
@@ -18,6 +34,7 @@ void print(const char *message) {
 }
 
 void print_symbol(char symbol) {
+    if (cursor_y >= VGA_HEIGHT) scroll_up();
     if (cursor_x >= VGA_WIDTH) {
         cursor_x = 0;
         cursor_y++;
@@ -46,6 +63,7 @@ void print_symbol(char symbol) {
 
 void print_string(const char* message, const unsigned char color, int len) {
     for (short i = 0; i < len; i++) {
+        if (cursor_y >= VGA_HEIGHT) scroll_up();
         if (cursor_x >= VGA_WIDTH) {
             cursor_x = 0;
             cursor_y++;
@@ -97,6 +115,23 @@ void del_symbol_current_pos() {
     VIDEO_MEMORY[cursor_y * VGA_WIDTH + cursor_x] = (default_fon_color << 8) | ' ';
     return;
 }
+
+short get_cursor_x() {
+    return cursor_x;
+}
+
+short get_cursor_y() {
+    return cursor_y;
+}
+
+void set_cursor_x(short cursor) {
+    cursor_x = cursor;
+}
+
+void set_cursor_y(short cursor) {
+    cursor_y = cursor;
+}
+
 void to_backspace() {
     if (cursor_x > 0) {
         cursor_x--;

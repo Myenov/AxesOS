@@ -39,4 +39,11 @@ void set_default_fon_color(unsigned char color);
 
 void del_symbol_current_pos();
 void to_backspace();
+
+short get_cursor_x();
+short get_cursor_y();
+void set_cursor_x(short cursor);
+void set_cursor_y(short cursor);
+void scroll_up(void);
+
 #endif

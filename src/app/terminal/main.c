@@ -55,7 +55,8 @@ extern int terminal_main() {
     // clear_screen();
 
     char *buffer = (char *)malloc(COMMAND_LENGHT);
-    
+    set_default_color(COLOR_WHITE);
+    set_default_fon_color(COLOR_BLACK);
     uint16_t command_cursor = 0;
     print("!user->:");
     while (is_run) {
