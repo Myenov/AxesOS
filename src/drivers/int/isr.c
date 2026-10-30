@@ -1,9 +1,15 @@
 #include "isr.h"
 #include "IDT.h"
 #include <stdint.h>
-// #include "../../lib/video/video.h"
-// #include "../../lib/string/str.h"
+
+// #define DEBUG_ISR
+#ifdef DEBUG_ISR
+#include "../../lib/video/video.h"
+#include "../../lib/string/str.h"
+#endif
+
 #include "../../lib/keyboard/toclick.h"
+#include "../../lib/apic/apic.h"
 
 void* isr_stub_table[] = {
     isr0, isr1, isr2, isr3, isr4, isr5, isr6, isr7,
@@ -43,10 +49,29 @@ void idt_init() {
 
 void isr_handler(registers_t* regs) {
     (void)regs;
+
+    #ifdef DEBUG_ISR
+    char nb[21];
+    print("\nEXC ");
+    print(uint64_to_str(regs->vector_number, nb));
+    print(" err=");
+    print(uint64_to_str(regs->error_code, nb));
+    print(" rip=");
+    print(ptr_to_str((void*)regs->rip, nb));
+    print_symbol('\n');
+    while (1) asm volatile("hlt");
+    #endif
 }
 
 void irq_handler(registers_t* regs) {
     (void)regs;
+    #ifdef DEBUG_ISR
+    char nb[21];
+    print("IRQ vec=");
+    print(uint64_to_str(regs->vector_number, nb));
+    print_symbol('\n');
+    #endif
+    
     
     switch (regs->vector_number) {
         case 33: {
@@ -55,18 +80,9 @@ void irq_handler(registers_t* regs) {
             break;
         }
 
-        default: {
-            if (regs->vector_number >= 40) {
-                asm volatile("outb %%al, %%dx" : : "a"(0x20), "d"(0xA0));
-            }
-            asm volatile("outb %%al, %%dx" : : "a"(0x20), "d"(0x20));
-            return;
-        }
+        default: break;
     }
     
-    if (regs->vector_number >= 40) {
-        asm volatile("outb %%al, %%dx" : : "a"(0x20), "d"(0xA0));
-    }
-    asm volatile("outb %%al, %%dx" : : "a"(0x20), "d"(0x20));
+    lapic_eoi();
 }
 

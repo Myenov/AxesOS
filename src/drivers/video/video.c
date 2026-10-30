@@ -1,5 +1,4 @@
 #include "../../lib/video/video.h"
-#include "../../lib/memory/alloc.h"
 #include <stdint.h>
 
 volatile unsigned char default_color = DEFAULT_COLOR;

@@ -22,9 +22,6 @@ __attribute__((section(".text.entry")))
 extern void kernel_main(uint64_t e820_count) {
     init_tts();
     idt_init();
-    clear_screen();
-    set_default_color(COLOR_WHITE);
-    set_default_fon_color(COLOR_BLACK);
 
     volatile uint16_t ebda_segment = *(volatile uint16_t *)0x040E;
     if (ebda_segment == 0) {
@@ -132,6 +129,9 @@ extern void kernel_main(uint64_t e820_count) {
     cpu_topology.count = count;
 
     current = status;
+    uintptr_t lapic_address = (uintptr_t)madt->lapicaddress;
+    uintptr_t ioapic_address = 0;
+    reserve_range(lapic_address, (uint64_t)lapic_address + 0x400);
     for (int i = 0; current; current = current->next) {
         if (current->entry->type == 0) {
             struct MADT_LocalAPIC *lapic = (struct MADT_LocalAPIC *)current->entry;
@@ -140,7 +140,16 @@ extern void kernel_main(uint64_t e820_count) {
             cpu_topology.cores[i].flags = lapic->flags;
             i++;
         }
+        if (current->entry->type == 1) {
+            struct MADT_IOAPIC *ioapic = (struct MADT_IOAPIC *)current->entry;
+            ioapic_address = ioapic->ioapicaddress;
+        }
     }
+    if (ioapic_address == 0) {
+        print("IOAPIC not found!\n");
+        while (1) asm volatile("hlt");
+    }
+    reserve_range(ioapic_address, ioapic_address + 0x20);
     
     #ifdef KERNEL_DEBUG
     for (uint8_t i = 0; i < 21; i++) numbuffer[i] = ' ';
@@ -173,9 +182,17 @@ extern void kernel_main(uint64_t e820_count) {
     init_clock_driver(hpet);
     reserve_range(0xFEE00000, 0xFEE00000+64);
     
-    
-    init_apic();
+    #ifdef KERNEL_DEBUG
+    for (uint8_t i = 0; i < 21; i++) numbuffer[i] = ' ';
+    print("LAPIC base: ");
+    print(ptr_to_str((void*)lapic_address, numbuffer));
+    print_symbol('\n');
+    #endif
+    init_apic(lapic_address, ioapic_address);
     init_keyboard_driver();
+    clear_screen();
+    set_default_color(COLOR_WHITE);
+    set_default_fon_color(COLOR_BLACK);
     asm volatile("sti");
 
     // char *buffer = (char *)malloc(21);
